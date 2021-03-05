@@ -1,0 +1,16 @@
+[package]
+name = "libcrun-sys"
+version = "0.1.0"
+authors = ["frosty"]
+edition = "2018"
+links = "crun"
+
+[features]
+static = []
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+
+[build-dependencies]
+bindgen = "0.57.0"

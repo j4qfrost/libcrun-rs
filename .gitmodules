@@ -1,0 +1,3 @@
+[submodule "crun"]
+	path = libcrun-sys/crun
+	url = git@github.com:containers/crun.git
