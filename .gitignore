@@ -47,7 +47,7 @@ build-aux/install-sh
 build-aux/ltmain.sh
 build-aux/missing
 build-aux/tap-driver.sh
-crun
+crun/crun
 /config.h
 /config.h.in
 /config.log
