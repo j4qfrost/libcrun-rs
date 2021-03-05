@@ -14,3 +14,4 @@ static = []
 
 [build-dependencies]
 bindgen = "0.57.0"
+regex = "1"

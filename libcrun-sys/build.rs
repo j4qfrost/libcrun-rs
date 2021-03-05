@@ -1,3 +1,4 @@
+use regex::Regex;
 use std::env;
 use std::fs;
 use std::io;
@@ -52,19 +53,26 @@ fn create_wrapper_h() -> io::Result<()> {
                 continue;
             }
 
-            let include_str = format!(
-                "#include <libcrun/{}>\n",
-                filename
-                    .strip_prefix("crun/src/libcrun")
-                    .ok()
-                    .unwrap()
-                    .to_str()
-                    .unwrap()
-            );
-
             let contents = fs::read_to_string(&filename)?;
-            if contents.contains(FUNCTION_ANNONTATION) {
+            let re_result = Regex::new(r"LIBCRUN_PUBLIC[^;]*").unwrap();
+            let iter: Vec<_> = re_result.find_iter(&contents).collect();
+            if iter.len() > 0 {
+                let include_str = format!(
+                    "\n#include <libcrun/{}>",
+                    filename
+                        .strip_prefix("crun/src/libcrun")
+                        .ok()
+                        .unwrap()
+                        .to_str()
+                        .unwrap()
+                );
                 wrapper_h.write_all(include_str.as_bytes())?;
+                for mat in iter {
+                    let mut line = mat.as_str().to_owned();
+                    line.replace_range(.."LIBCRUN_PUBLIC ".len(), "\n/* ");
+                    line.push_str("; */\n");
+                    wrapper_h.write_all(line.as_bytes())?;
+                }
             }
         }
     }
