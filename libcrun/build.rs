@@ -14,6 +14,7 @@ fn main() -> io::Result<()> {
     {
         fs::copy(lib_dir.join("libcrun.so.0"), out_path.join("libcrun.so.0"))?;
         println!("cargo:rustc-link-lib=crun");
+        println!("cargo:rustc-link-lib=criu");
         println!("cargo:rustc-link-lib=yajl");
         println!("cargo:rustc-link-lib=systemd");
         println!("cargo:rustc-link-lib=seccomp");
@@ -24,6 +25,7 @@ fn main() -> io::Result<()> {
     {
         fs::copy(lib_dir.join("libcrun.a"), out_path.join("libcrun.a"))?;
         println!("cargo:rustc-link-lib=static=crun");
+        println!("cargo:rustc-link-lib=static=criu");
         println!("cargo:rustc-link-lib=static=yajl");
         println!("cargo:rustc-link-lib=static=systemd");
         println!("cargo:rustc-link-lib=static=seccomp");
