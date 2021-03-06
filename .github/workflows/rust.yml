@@ -18,7 +18,7 @@ jobs:
         with:
           submodules: recursive
       - run: sudo apt-get update
-      - run: sudo apt-get install -y make git gcc build-essential pkgconf libtool libsystemd-dev libcap-dev libseccomp-dev libyajl-dev go-md2man libtool autoconf python3 automake
+      - run: sudo apt-get install -y make git gcc build-essential pkgconf libtool libsystemd-dev libcap-dev libseccomp-dev libyajl-dev criu go-md2man libtool autoconf python3 automake
       - name: Build
         run: cargo build --verbose
       - name: Run tests
