@@ -3,7 +3,7 @@ use std::env;
 use std::fs;
 use std::io;
 use std::io::prelude::Write;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 const FUNCTION_ANNONTATION: &str = "LIBCRUN_PUBLIC";
@@ -13,20 +13,11 @@ fn main() -> io::Result<()> {
 
     build_crun()?;
     create_wrapper_h()?;
-    // Tell cargo to tell rustc to link the system bzip2
-    // shared library.
-    println!("cargo:cargo:rustc-link-search=crun/.libs");
-
-    #[cfg(feature = "static")]
-    println!("cargo:rustc-link-lib=static=crun");
-
-    #[cfg(not(feature = "static"))]
-    println!("cargo:rustc-link-lib=crun");
 
     // Tell cargo to invalidate the built crate whenever the wrapper changes
     println!("cargo:rerun-if-changed=src/wrapper.h");
 
-    generate_bindings();
+    generate_bindings()?;
     Ok(())
 }
 
@@ -54,7 +45,8 @@ fn create_wrapper_h() -> io::Result<()> {
             }
 
             let contents = fs::read_to_string(&filename)?;
-            let re_result = Regex::new(r"LIBCRUN_PUBLIC[^;]*").unwrap();
+            let re = format!(r"{}[^;]*", FUNCTION_ANNONTATION);
+            let re_result = Regex::new(&re).unwrap();
             let iter: Vec<_> = re_result.find_iter(&contents).collect();
             if iter.len() > 0 {
                 let include_str = format!(
@@ -69,7 +61,7 @@ fn create_wrapper_h() -> io::Result<()> {
                 wrapper_h.write_all(include_str.as_bytes())?;
                 for mat in iter {
                     let mut line = mat.as_str().to_owned();
-                    line.replace_range(.."LIBCRUN_PUBLIC ".len(), "\n/* ");
+                    line.replace_range(..FUNCTION_ANNONTATION.len(), "\n/*");
                     line.push_str("; */\n");
                     wrapper_h.write_all(line.as_bytes())?;
                 }
@@ -82,18 +74,45 @@ fn create_wrapper_h() -> io::Result<()> {
     Ok(())
 }
 
-fn generate_bindings() {
+fn generate_bindings() -> io::Result<()> {
+    let lib_dir = Path::new(&env::var("CARGO_MANIFEST_DIR").unwrap()).join("crun/.libs");
+    println!("cargo:rustc-link-search=native={}", lib_dir.display());
+    println!("cargo:rustc-link-search=/lib/x86_64-linux-gnu/");
+    #[cfg(not(features = "static"))]
+    {
+        println!("cargo:rustc-link-lib=crun");
+        println!("cargo:rustc-link-lib=yajl");
+        println!("cargo:rustc-link-lib=systemd");
+        println!("cargo:rustc-link-lib=seccomp");
+        println!("cargo:rustc-link-lib=dl");
+        println!("cargo:rustc-link-lib=cap");
+    }
+    #[cfg(features = "static")]
+    {
+        println!("cargo:rustc-link-lib=static=crun");
+        println!("cargo:rustc-link-lib=static=yajl");
+        println!("cargo:rustc-link-lib=static=systemd");
+        println!("cargo:rustc-link-lib=static=seccomp");
+        println!("cargo:rustc-link-lib=static=dl");
+        println!("cargo:rustc-link-lib=static=cap");
+    }
     let bindings = bindgen::Builder::default()
         .clang_arg("-Icrun/src/")
         .clang_arg("-Icrun/libocispec/src/")
         .clang_arg("-Icrun/")
+        .clang_arg("-I/usr/include/yajl/")
+        .clang_arg("-Lcrun/.libs/")
+        .clang_arg("-L/lib/x86_64-linux-gnu/")
         .header("src/wrapper.h")
+        .trust_clang_mangling(false)
         .parse_callbacks(Box::new(bindgen::CargoCallbacks))
         .generate()
         .expect("Unable to generate bindings");
 
     let out_path = PathBuf::from(env::var("OUT_DIR").unwrap());
-    bindings
-        .write_to_file(out_path.join("bindings.rs"))
-        .expect("Couldn't find pregenerated bindings!");
+    bindings.write_to_file(out_path.join("bindings.rs"))?;
+    fs::copy(lib_dir.join("libcrun.so.0"), out_path.join("libcrun.so.0"))?;
+    Ok(())
 }
+
+// FOUND_LIBS = -lyajl -lsystemd -lseccomp -ldl -lcap
